@@ -1,6 +1,6 @@
 # Wowhead Loot Extractor
 
-A Python script that scrapes Wowhead for NPC loot tables and generates SQL blocks for SPP-Legions database.
+A Python script that scrapes Wowhead for NPC loot tables and generates SQL blocks for SPP-Legion's database.
 
 ## Features
 
@@ -21,8 +21,7 @@ A Python script that scrapes Wowhead for NPC loot tables and generates SQL block
 
 ## Installation
 
-1. Clone or download this repository
-2. Install dependencies:
+1. Install dependencies:
 
 ```bash
 pip install -r requirements.txt
@@ -35,7 +34,7 @@ pip install -r requirements.txt
 Extract loot for a single NPC:
 
 ```bash
-python3 wowhead_loot_extractor.py --npc 96028
+python wowhead_loot_extractor.py --npc 96028
 ```
 
 ### Multiple NPCs
@@ -43,7 +42,7 @@ python3 wowhead_loot_extractor.py --npc 96028
 Extract loot for multiple NPCs (comma-separated):
 
 ```bash
-python3 wowhead_loot_extractor.py --npc 96028,12345,67890
+python wowhead_loot_extractor.py --npc 96028,12345,67890
 ```
 
 ### Custom Output Directory
@@ -51,7 +50,7 @@ python3 wowhead_loot_extractor.py --npc 96028,12345,67890
 Specify a custom output directory:
 
 ```bash
-python3 wowhead_loot_extractor.py --npc 96028 --outdir my_loot_tables
+python wowhead_loot_extractor.py --npc 96028 --outdir my_loot_tables
 ```
 
 ## Output
@@ -189,3 +188,4 @@ This script is provided as-is.
 - Scrapes data from [Wowhead.com](https://www.wowhead.com)
 - Single Player Project - Legion (SPP-Legion's) database format
 - Skeezix for original script concept
+- Veil - SPP Developer, and the Godfather's Right Hand
