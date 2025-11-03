@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Given a list of NPC (or GameObject) IDs, scrape Wowhead for their loot tables and generate SQL blocks.
+Given a comma-separated list of IDs, scrape Wowhead for their loot tables and generate SQL blocks.
 """
 
 import requests
@@ -51,19 +51,58 @@ def fetch_loot(npc_id):
 
     print(f"[+] Fetching loot data for NPC {npc_id} from {url}")
 
-    try:
-        resp = requests.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=10)
-    except Exception as e:
-        print(f"[!] Error fetching NPC {npc_id}: {e}")
+    # Retry logic with exponential backoff (handle timeouts and 429 rate limits)
+    max_retries = 3
+    retry_delay = 1.0
+    headers = {
+        "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.5",
+    }
 
-        return []
-    
-    if resp.status_code != 200:
-        print(f"[!] HTTP {resp.status_code} when fetching NPC {npc_id}")
+    html = None
 
+    for attempt in range(max_retries):
+        try:
+            resp = requests.get(url, headers=headers, timeout=10)
+
+            if resp.status_code == 200:
+                html = resp.text
+
+                if attempt > 0:
+                    print(f"[+] Successfully fetched NPC {npc_id} on retry attempt {attempt + 1}")
+
+                # polite short delay before parsing
+                time.sleep(0.2 + (attempt * 0.1))
+                break
+            elif resp.status_code == 429:
+                if attempt < max_retries - 1:
+                    wait_time = retry_delay * (2 ** attempt)
+
+                    print(f"[!] Rate limited when fetching NPC {npc_id}, waiting {wait_time}s before retry {attempt + 1}/{max_retries}")
+                    time.sleep(wait_time)
+                    continue
+                else:
+                    print(f"[!] Rate limit exceeded for NPC {npc_id} after {max_retries} attempts")
+
+                    return []
+            else:
+                print(f"[!] HTTP {resp.status_code} when fetching NPC {npc_id}")
+
+                return []
+        except Exception as e:
+            if attempt < max_retries - 1:
+                wait_time = retry_delay * (2 ** attempt)
+                print(f"[!] Error fetching NPC {npc_id}: {e}, retrying in {wait_time}s")
+                time.sleep(wait_time)
+                continue
+            else:
+                print(f"[!] Failed to fetch NPC {npc_id} after {max_retries} attempts: {e}")
+
+                return []
+
+    if html is None:
         return []
-    
-    html = resp.text
 
     # find the new Listview(...) block with id:'drops',
     # extract the `data: [ ... ]` array using bracket-matching, then extract each
@@ -781,43 +820,78 @@ def fetch_npc_name(npc_id, timeout=10):
 
     headers = {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64)"}
 
-    try:
-        resp = requests.get(url, headers=headers, timeout=timeout)
+    # Add retry behaviour similar to item fetches to handle temporary network issues
+    max_retries = 3
+    retry_delay = 1.0
 
-        if resp.status_code != 200:
-            return str(npc_id)
+    html = None
 
-        soup = BeautifulSoup(resp.text, 'html.parser')
+    for attempt in range(max_retries):
+        try:
+            resp = requests.get(url, headers=headers, timeout=timeout)
 
-        # 1) prefer the OpenGraph title
-        og = soup.find('meta', {'property': 'og:title'})
+            if resp.status_code == 200:
+                html = resp.text
 
-        if og and og.get('content'):
-            name = og.get('content')
-        else:
-            # 2) try H1 headings (Wowhead uses <h1 class="heading-size-1">)
-            h1 = soup.find('h1')
+                if attempt > 0:
+                    print(f"[+] Successfully fetched NPC page {npc_id} on retry attempt {attempt + 1}")
 
-            if h1 and h1.get_text(strip=True):
-                name = h1.get_text(strip=True)
+                # small polite pause
+                time.sleep(0.2 + (attempt * 0.1))
+                break
+            elif resp.status_code == 429:
+                if attempt < max_retries - 1:
+                    wait_time = retry_delay * (2 ** attempt)
+
+                    print(f"[!] Rate limited when fetching NPC page {npc_id}, waiting {wait_time}s before retry {attempt + 1}/{max_retries}")
+
+                    time.sleep(wait_time)
+                    continue
+                else:
+                    return str(npc_id)
             else:
-                # 3) fallback to title tag
-                t = soup.find('title')
-                name = t.string if (t and t.string) else str(npc_id)
+                return str(npc_id)
+        except Exception:
+            if attempt < max_retries - 1:
+                wait_time = retry_delay * (2 ** attempt)
+                
+                time.sleep(wait_time)
+                continue
+            else:
+                return str(npc_id)
 
-        # clean common suffixes (site name), split on em-dash or hyphen
-        name = str(name).strip()
-
-        for sep in ['—', ' - ', ' – ']:
-            if sep in name:
-                name = name.split(sep)[0].strip()
-
-        # strip trailing punctuation
-        name = name.rstrip(' -–—')
-
-        return name or str(npc_id)
-    except Exception:
+    if html is None:
         return str(npc_id)
+
+    soup = BeautifulSoup(html, 'html.parser')
+
+    # 1) prefer the OpenGraph title
+    og = soup.find('meta', {'property': 'og:title'})
+
+    if og and og.get('content'):
+        name = og.get('content')
+    else:
+        # 2) try H1 headings (Wowhead uses <h1 class="heading-size-1">)
+        h1 = soup.find('h1')
+
+        if h1 and h1.get_text(strip=True):
+            name = h1.get_text(strip=True)
+        else:
+            # 3) fallback to title tag
+            t = soup.find('title')
+            name = t.string if (t and t.string) else str(npc_id)
+
+    # clean common suffixes (site name), split on em-dash or hyphen
+    name = str(name).strip()
+
+    for sep in ['—', ' - ', ' – ']:
+        if sep in name:
+            name = name.split(sep)[0].strip()
+
+    # strip trailing punctuation
+    name = name.rstrip(' -–—')
+
+    return name or str(npc_id)
 
 def decide_chance(item):
     """ Decide the drop-chance column value based on heuristics. 

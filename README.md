@@ -57,7 +57,7 @@ python wowhead_loot_extractor.py --npc 96028 --outdir my_loot_tables
 
 The script generates SQL files in the output directory (default: `output/`):
 
-- `loot_<npc_id>.sql` - Contains the loot table SQL with comments
+- `loot_<npc_id>_<npc-name>.sql` - Contains the loot table SQL with comments
 
 ### SQL Output Format
 
@@ -80,22 +80,20 @@ Each SQL file contains:
 ### Example Output
 
 ```sql
-/* NPC 96028 loot list
-127048 -- chance:-4.11% -- quest -- quality:common
-127929 -- chance:1.33% -- quality:common -- alchemy (recipe)
-134225 -- chance:2.42% -- quality:green
+/* NPC 96028 - Wrath of Azshara loot list
+127048 -- chance:-4.11% -- quest -- quality:common -- name:Heart of the Storm
+127929 -- chance:1.33% -- quality:common -- alchemy (recipe) -- name:Recipe: Leytorrent Potion
 */
 
 SET @NPC := 96028;
 REPLACE INTO creature_loot_template (`entry`,`item`,`ChanceOrQuestChance`,`lootmode`,`groupid`,`mincountOrRef`,`maxcount`,`shared`) VALUES
 (@NPC,127048,-4.11,23,0,1,1,0),
-(@NPC,127929,1.33,23,0,1,1,0),
-(@NPC,134225,2.42,23,0,1,1,0);
+(@NPC,127929,1.33,23,0,1,1,0);
 
--- loot conditions
+-- loot conditions (example)
 DELETE FROM conditions WHERE `SourceTypeOrReferenceId`=1
-    AND `SourceGroup`=@NPC
-    AND `SourceEntry` IN (127929); -- item IDs
+   AND `SourceGroup`=@NPC
+   AND `SourceEntry` IN (127929); -- item IDs
 INSERT INTO conditions (...) VALUES
 (1, @NPC, 127929, 0, 1, 7, 0, 171, 1, 0, 0, 0, '', 'Item Drop - Has Alchemy'),
 (1, @NPC, 127929, 0, 1, 2, 0, 127929, 1, 1, 1, 0, '', 'Item Drop - No Item');
@@ -129,13 +127,13 @@ Supported professions:
 - Engineering
 - Tailoring
 - Herbalism
+- Cooking
 
 ### Excluded Items
 
 The following item IDs are automatically excluded from output:
 ```
-124124, 138482, 138786, 141689, 141690, 147579, 138781, 138782,
-140221, 140222, 140224, 140225, 140226, 140227, 144345, 147869, -1275
+124124, 138482, 138786, 141689, 141690, 147579, 138781, 138782, 140220, 140221, 140222, 140224, 140225, 140226, 140227, 144345, 147869, 138019, -1275
 ```
 
 ### Caching System
@@ -165,9 +163,7 @@ Example console output:
 [+] Need to fetch 1 item pages to identify recipe professions and quest flags...
 [+] Using cache directory: output/.cache
 [+] Fetching item 141592 (1/1)...
-[!] Error fetching item 141592: Connection timeout, retrying in 1.0s
-[+] Successfully fetched item 141592 on retry attempt 2
-[+] Written output for NPC 96028 → output/loot_96028.sql
+[+] Written output for NPC 96028 → output/loot_96028_Wrath_of_Azshara.sql
 ```
 
 ## Configuration
@@ -189,3 +185,16 @@ This script is provided as-is.
 - Single Player Project - Legion (SPP-Legion's) database format
 - Skeezix for original script concept
 - Veil - SPP Developer, and the Godfather's Right Hand
+
+## Limitations & Future Work
+
+- Currently the script only supports extracting loot tables for NPCs. This covers the vast majority of creature drops but omits other Wowhead types.
+- Planned expansions (future work):
+   - Add support for GameObjects (e.g., chests) loot tables.
+   - Add support for Spell-sourced drops
+   - Optional CLI flags to fine-tune behavior:
+      - Exclude specified professions
+      - Exclude specified item qualities
+      - Exclude specified item IDs
+
+These additions will be implemented when time permits, but the core extraction and SQL-generation for NPCs is stable now.
