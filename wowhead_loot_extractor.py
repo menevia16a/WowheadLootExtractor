@@ -65,7 +65,7 @@ def fetch_loot(npc_id):
     
     html = resp.text
 
-    # Single robust approach: find the new Listview(...) block with id:'drops',
+    # find the new Listview(...) block with id:'drops',
     # extract the `data: [ ... ]` array using bracket-matching, then extract each
     # top-level object using brace-matching aware of quoted strings. This avoids
     # trying to json.loads a possibly non-strict-JS payload and recovers all items.
@@ -697,6 +697,7 @@ def fetch_item_info(item_id, cache_dir=None, timeout=10):
     for prof in PROFESSIONS:
         if prof in lname:
             info['profession'] = PROFESSIONS[prof]
+
             if info['is_recipe']:
                 break
 
@@ -744,6 +745,80 @@ def enrich_items(items, cache_dir=None):
         })
     return enriched
 
+
+def sanitize_filename(name, maxlen=64):
+    """Sanitize a string to be safe for filenames: keep alphanumerics, dashes and underscores.
+    Collapse spaces and non-word characters into underscores and trim length.
+    """
+    if not name:
+        return ''
+
+    # normalize whitespace
+    s = str(name).strip()
+
+    # remove quotes and control chars
+    s = re.sub(r'["\'"\r\n\t]+', ' ', s)
+
+    # Replace any sequence of non-alnum with underscore
+    s = re.sub(r'[^A-Za-z0-9]+', '_', s)
+    s = re.sub(r'_{2,}', '_', s)
+    s = s.strip('_')
+
+    if len(s) > maxlen:
+        s = s[:maxlen].rstrip('_')
+
+    return s or str(int(time.time()))
+
+
+def fetch_npc_name(npc_id, timeout=10):
+    """Fetch the NPC page and try to extract a human-friendly NPC name.
+
+    Uses common meta tags and the page H1. Returns a cleaned name string.
+    This function is conservative and will return the numeric id as string
+    if it cannot determine a name.
+    """
+    url = f"https://www.wowhead.com/npc={npc_id}"
+
+    headers = {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64)"}
+
+    try:
+        resp = requests.get(url, headers=headers, timeout=timeout)
+
+        if resp.status_code != 200:
+            return str(npc_id)
+
+        soup = BeautifulSoup(resp.text, 'html.parser')
+
+        # 1) prefer the OpenGraph title
+        og = soup.find('meta', {'property': 'og:title'})
+
+        if og and og.get('content'):
+            name = og.get('content')
+        else:
+            # 2) try H1 headings (Wowhead uses <h1 class="heading-size-1">)
+            h1 = soup.find('h1')
+
+            if h1 and h1.get_text(strip=True):
+                name = h1.get_text(strip=True)
+            else:
+                # 3) fallback to title tag
+                t = soup.find('title')
+                name = t.string if (t and t.string) else str(npc_id)
+
+        # clean common suffixes (site name), split on em-dash or hyphen
+        name = str(name).strip()
+
+        for sep in ['—', ' - ', ' – ']:
+            if sep in name:
+                name = name.split(sep)[0].strip()
+
+        # strip trailing punctuation
+        name = name.rstrip(' -–—')
+
+        return name or str(npc_id)
+    except Exception:
+        return str(npc_id)
+
 def decide_chance(item):
     """ Decide the drop-chance column value based on heuristics. 
     Quest items get negative drop rates.
@@ -771,7 +846,7 @@ def decide_chance(item):
     except Exception:
         return None
 
-def produce_sql(npc_id, items, lootmode=23, groupid=0, mincount=1, maxcount=1, shared=0):
+def produce_sql(npc_id, items, lootmode=23, groupid=0, mincount=1, maxcount=1, shared=0, npc_name=None):
     """ Produce the SQL REPLACE block and commented list."""
     # map numeric quality to human label
     quality_labels = {
@@ -786,7 +861,11 @@ def produce_sql(npc_id, items, lootmode=23, groupid=0, mincount=1, maxcount=1, s
     # Build comment lines and SQL values only for items that have an
     # NPC-provided drop chance. Items without a provided chance are
     # skipped (with a message) and not included in the output.
-    comment_lines = [f"/* NPC {npc_id} loot list"]
+    # include NPC name in the comment header
+    if not npc_name:
+        npc_name = str(npc_id)
+
+    comment_lines = [f"/* NPC {npc_id} - {npc_name} loot list"]
     vals = []
     skipped = []
 
@@ -991,9 +1070,14 @@ def main():
                     it['is_legendary'] = details.get('is_legendary')
         
         # Always produce SQL output
-        out = produce_sql(npc, items)
+        # Fetch NPC name and sanitize it for the output filename
+        npc_name = fetch_npc_name(npc)
+        sanitized = sanitize_filename(npc_name)
 
-        fname = os.path.join(args.outdir, f"loot_{npc}.sql")
+        print(f"[+] NPC {npc} name: {npc_name} -> {sanitized}")
+
+        out = produce_sql(npc, items, npc_name=npc_name)
+        fname = os.path.join(args.outdir, f"loot_{npc}_{sanitized}.sql")
 
         # Ensure the output file ends with a single newline
         if not out.endswith("\n"):
