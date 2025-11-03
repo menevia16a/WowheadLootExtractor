@@ -826,6 +826,9 @@ def produce_sql(npc_id, items, lootmode=23, groupid=0, mincount=1, maxcount=1, s
         # legendary
         if it.get('is_legendary'):
             parts.append('legendary')
+			
+		# name
+        parts.append(f"name:{it.get('name')}")
 
         comment = f"{iid}"
 
