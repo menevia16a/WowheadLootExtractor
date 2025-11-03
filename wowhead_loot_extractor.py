@@ -14,7 +14,7 @@ import time
 MAX_ITEM_ID_LEGION     = 157831
 
 # Item IDs to exclude from loot tables
-EXCLUDED_ITEM_IDS = {124124, 138482, 138786, 141689, 141690, 147579, 138781, 138782, 140221, 140222, 140224, 140225, 140226, 140227, 144345, 147869, -1275}
+EXCLUDED_ITEM_IDS = {124124, 138482, 138786, 141689, 141690, 147579, 138781, 138782, 140220, 140221, 140222, 140224, 140225, 140226, 140227, 144345, 147869, 138019, -1275}
 
 PROFESSIONS = {
     'alchemy':    'alchemy',
@@ -826,6 +826,9 @@ def produce_sql(npc_id, items, lootmode=23, groupid=0, mincount=1, maxcount=1, s
         # legendary
         if it.get('is_legendary'):
             parts.append('legendary')
+			
+		# name
+        parts.append(f"name:{it.get('name')}")
 
         comment = f"{iid}"
 
