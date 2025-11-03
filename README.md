@@ -177,7 +177,7 @@ You can modify the following constants in the script:
 - `MAX_ITEM_ID_LEGION` (line 14): Maximum item ID for Legion expansion
 - `EXCLUDED_ITEM_IDS` (line 17): Set of item IDs to exclude
 - `PROFESSIONS` (line 19): Supported profession names
-- `PROFESSION_SPELL_ID` (line 31): Profession spell IDs for conditions
+- `PROFESSION_SKILL_ID` (line 31): Profession skill IDs from SkillLine.db2 for conditions
 
 ## License
 
