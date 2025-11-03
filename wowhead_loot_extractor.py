@@ -31,7 +31,7 @@ PROFESSIONS = {
 # Mapping from profession key to a representative profession spell/skill id used
 # in conditions (used by the generated conditions INSERTs). These IDs match
 # common profession spell ids used in conditions (example: Alchemy=171).
-PROFESSION_SPELL_ID = {
+PROFESSION_SKILL_ID = {
     'alchemy': 171,
     'enchanting': 333,
     'jewelcrafting': 755,
@@ -859,7 +859,7 @@ def produce_sql(npc_id, items, lootmode=23, groupid=0, mincount=1, maxcount=1, s
     recipe_items = [it for it in items if it.get('is_recipe') and it.get('profession') and it.get('id')]
 
     # map to those with a known spell id
-    recipe_with_spell = [(it['id'], it['profession']) for it in recipe_items if PROFESSION_SPELL_ID.get(it['profession'])]
+    recipe_with_spell = [(it['id'], it['profession']) for it in recipe_items if PROFESSION_SKILL_ID.get(it['profession'])]
 
     if recipe_with_spell:
         ids = ",".join(str(i) for i, _ in recipe_with_spell)
@@ -869,7 +869,7 @@ def produce_sql(npc_id, items, lootmode=23, groupid=0, mincount=1, maxcount=1, s
         cond_vals = []
 
         for iid, prof in recipe_with_spell:
-            spell = PROFESSION_SPELL_ID.get(prof)
+            spell = PROFESSION_SKILL_ID.get(prof)
 
             # Has profession condition (ConditionType 7 using profession spell id)
             cond_vals.append(f"(1, @NPC, {iid}, 0, 1, 7, 0, {spell}, 1, 0, 0, 0, '', 'Item Drop - Has {prof.capitalize()}')")
