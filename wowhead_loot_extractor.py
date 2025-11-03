@@ -26,6 +26,7 @@ PROFESSIONS = {
     'engineering':'engineering',
     'tailoring':'tailoring',
     'herbalism':'herbalism',
+	'cooking':'cooking',
 }
 
 # Mapping from profession key to a representative profession spell/skill id used
@@ -41,6 +42,7 @@ PROFESSION_SPELL_ID = {
     'engineering': 202,
     'tailoring': 197,
     'herbalism': 182,
+	'cooking': 185,
 }
 
 def fetch_loot(npc_id):
