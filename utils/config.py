@@ -64,7 +64,7 @@ QUALITY_LABELS = {
     3: 'rare',
     4: 'epic',
     5: 'legendary',
-    6: 'legendary' # Some legendaries use quality id 6
+    6: 'artifact'
 }
 
 # Recipe keywords for detection
