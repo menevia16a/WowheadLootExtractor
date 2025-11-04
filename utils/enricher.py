@@ -9,19 +9,19 @@ class ItemEnricher:
     """Enriches items with computed properties like recipe detection and profession."""
 
     @staticmethod
-    def enrich_from_npc_data(items):
+    def enrich_item_data(items):
         """
-        Enrich items using data provided by NPC page parsing.
+        Enrich items using data provided by page parsing.
         
-        Uses NPC-embedded data only to avoid rate limiting. Computes:
+        Uses embedded data only to avoid rate limiting. Computes:
         - Recipe detection from name
         - Profession identification
         - Quest item classification
         - Legendary status from quality
         
         Args:
-            items: List of raw item dicts from NPC loot parsing
-            
+            items: List of raw item dicts from page parsing
+
         Returns:
             List of enriched item dicts
         """

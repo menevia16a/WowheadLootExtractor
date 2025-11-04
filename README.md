@@ -4,7 +4,9 @@ A Python script that scrapes Wowhead for NPC loot tables and generates SQL block
 
 ## Features
 
-- Scrapes NPC loot tables from Wowhead
+- Scrapes NPC loot tables
+- Scrapes NPC loot tables
+- Scrapes GameObject (chest/container) loot tables
 - Automatically detects quest items and applies negative drop rates
 - Identifies profession recipes and generates appropriate loot conditions
 - Filters items by Legion expansion (MAX_ITEM_ID_LEGION: 157831)
@@ -35,6 +37,18 @@ Extract loot for a single NPC:
 
 ```bash
 python wowhead_loot_extractor.py --npc 96028
+```
+
+Extract loot for a single GameObject (e.g. chest):
+
+```bash
+python wowhead_loot_extractor.py --object 252452
+```
+
+Extract contained loot for an Item (container/sack):
+
+```bash
+python wowhead_loot_extractor.py --item 44663
 ```
 
 ### Multiple NPCs
@@ -92,6 +106,9 @@ Notes:
 The script generates SQL files in the output directory (default: `output/`):
 
 - `loot_<npc_id>_<npc-name>.sql` - Contains the loot table SQL with comments
+- `loot_<npc_id>_<npc-name>.sql` - Contains the NPC loot table SQL with comments
+- `loot_object_<obj_id>_<object-name>.sql` - Contains GameObject (chest) loot SQL
+- `loot_item_<item_id>_<item-name>.sql` - Contains Item container (contains) loot SQL
 
 ### SQL Output Format
 
@@ -219,12 +236,3 @@ This script is provided as-is.
 - Single Player Project - Legion (SPP-Legion's) database format
 - Skeezix for original script concept
 - Veil - SPP Developer, and the Godfather's Right Hand
-
-## Limitations & Future Work
-
-- Currently the script only supports extracting loot tables for NPCs. This covers the vast majority of creature drops but omits other Wowhead types.
-- Planned expansions (future work):
-   - Add support for GameObjects (e.g., chests) loot tables.
-   - Add support for Items (e.g. Sack of Gems) loot tables.
-
-These additions will be implemented when time permits, but the core extraction and SQL-generation for NPCs is stable now.

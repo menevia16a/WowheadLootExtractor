@@ -76,4 +76,5 @@ QUEST_ITEM_CLASS = 12
 # Wowhead URLs
 WOWHEAD_BASE_URL = "https://www.wowhead.com"
 WOWHEAD_NPC_URL = lambda npc_id: f"{WOWHEAD_BASE_URL}/npc={npc_id}#drops"
-WOWHEAD_ITEM_URL = lambda item_id: f"{WOWHEAD_BASE_URL}/item={item_id}"
+WOWHEAD_ITEM_URL = lambda item_id: f"{WOWHEAD_BASE_URL}/item={item_id}#contains"
+WOWHEAD_OBJECT_URL = lambda obj_id: f"{WOWHEAD_BASE_URL}/object={obj_id}#contains"

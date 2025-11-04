@@ -13,7 +13,8 @@ import traceback
 
 from utils import (
     NpcLootFetcher, ItemInfoFetcher, NpcNameFetcher,
-    ItemEnricher, SQLGenerator, sanitize_filename
+    ItemEnricher, SQLGenerator, sanitize_filename,
+    GameObjectLootFetcher, ObjectNameFetcher, ItemLootFetcher
 )
 from utils import PROFESSIONS, QUALITY_LABELS
 
@@ -136,7 +137,7 @@ def process_npc(npc_id, outdir, use_cache=True, exclude_ids=None, exclude_qualit
         return False
 
     # Enrich items with computed properties
-    items = ItemEnricher.enrich_from_npc_data(items)
+    items = ItemEnricher.enrich_item_data(items)
 
     # Fetch item pages for recipes that lack profession detection
     print(f"[+] Using cache directory: {cache_dir}")
@@ -201,15 +202,195 @@ def process_npc(npc_id, outdir, use_cache=True, exclude_ids=None, exclude_qualit
     return True
 
 
+def process_object(obj_id, outdir, use_cache=True, exclude_ids=None, exclude_qualities=None, exclude_professions=None):
+    """
+    Process a single GameObject: fetch loot, enrich data, generate SQL.
+
+    Emits SQL into `gameobject_loot_template` and writes conditions with SourceType 4.
+    """
+    # Initialize fetchers
+    loot_fetcher = GameObjectLootFetcher()
+    
+    cache_dir = os.path.join(outdir, '.cache') if use_cache else None
+    item_fetcher = ItemInfoFetcher(cache_dir=cache_dir)
+    
+    name_fetcher = ObjectNameFetcher()
+
+    # Fetch raw loot data
+    items = loot_fetcher.fetch_loot(obj_id)
+
+    if not items:
+        print(f"[!] No items found for GameObject {obj_id}, skipping.")
+
+        return False
+
+    # Enrich items with computed properties
+    items = ItemEnricher.enrich_item_data(items)
+
+    # Fetch item pages for recipes that lack profession detection
+    print(f"[+] Using cache directory: {cache_dir}")
+
+    items = ItemEnricher.update_from_item_page(items, item_fetcher)
+
+    # Fetch object name and sanitize for filename
+    obj_name = name_fetcher.fetch_object_name(obj_id)
+    sanitized = sanitize_filename(obj_name)
+
+    print(f"[+] GameObject {obj_id} name: {obj_name} -> {sanitized}")
+
+    # Apply exclusions (ids, qualities, professions)
+    exclude_ids = exclude_ids or set()
+    exclude_qualities = set(q.lower() for q in (exclude_qualities or set()))
+    exclude_professions = set(exclude_professions or set())
+
+    if exclude_ids or exclude_qualities or exclude_professions:
+        filtered = []
+
+        for it in items:
+            iid = it.get('id')
+
+            # Exclude by explicit id
+            if iid in exclude_ids:
+                print(f"[~] Excluding item {iid}")
+                continue
+
+            # Exclude by quality label
+            qlabel = QUALITY_LABELS.get(int(it.get('quality', 0)), '').lower()
+
+            if qlabel and qlabel in exclude_qualities:
+                print(f"[~] Excluding item {iid} (quality:{qlabel})")
+                continue
+
+            # Exclude by profession
+            prof = it.get('profession')
+
+            if prof and prof in exclude_professions:
+                print(f"[~] Excluding item {iid} (profession:{prof})")
+                continue
+
+            filtered.append(it)
+
+        items = filtered
+
+    sql_output = SQLGenerator.generate_gameobject_loot_sql(obj_id, items, obj_name=obj_name)
+
+    # Write to file
+    fname = os.path.join(outdir, f"loot_object_{obj_id}_{sanitized}.sql")
+
+    # Ensure output ends with single newline
+    if not sql_output.endswith("\n"):
+        sql_output = sql_output + "\n"
+
+    with open(fname, "w", encoding="utf-8") as f:
+        f.write(sql_output)
+
+    print(f"[+] Written output for GameObject {obj_id} → {fname}")
+
+    return True
+
+
+def process_item(item_id, outdir, use_cache=True, exclude_ids=None, exclude_qualities=None, exclude_professions=None):
+    """
+    Process a single Item/container: fetch contained loot, enrich data, generate SQL.
+
+    Emits SQL into `item_loot_template` and writes conditions with SourceType 5.
+    """
+    # Initialize fetchers
+    loot_fetcher = ItemLootFetcher()
+
+    cache_dir = os.path.join(outdir, '.cache') if use_cache else None
+    item_fetcher = ItemInfoFetcher(cache_dir=cache_dir)
+
+    # Fetch contained loot
+    items = loot_fetcher.fetch_loot(item_id)
+
+    if not items:
+        print(f"[!] No contained items found for Item {item_id}, skipping.")
+
+        return False
+
+    # Enrich items using same enricher (structure matches)
+    items = ItemEnricher.enrich_item_data(items)
+
+    # Update from item pages when needed
+    print(f"[+] Using cache directory: {cache_dir}")
+
+    items = ItemEnricher.update_from_item_page(items, item_fetcher)
+
+    # Fetch item info for name
+    item_info = item_fetcher.fetch_item_info(item_id) or {}
+    item_name = item_info.get('name') or str(item_id)
+    sanitized = sanitize_filename(item_name)
+
+    print(f"[+] Item {item_id} name: {item_name} -> {sanitized}")
+
+    # Apply exclusions
+    exclude_ids = exclude_ids or set()
+    exclude_qualities = set(q.lower() for q in (exclude_qualities or set()))
+    exclude_professions = set(exclude_professions or set())
+
+    if exclude_ids or exclude_qualities or exclude_professions:
+        filtered = []
+
+        for it in items:
+            iid = it.get('id')
+
+            if iid in exclude_ids:
+                print(f"[~] Excluding item {iid}")
+                continue
+
+            qlabel = QUALITY_LABELS.get(int(it.get('quality', 0)), '').lower()
+
+            if qlabel and qlabel in exclude_qualities:
+                print(f"[~] Excluding item {iid} (quality:{qlabel})")
+                continue
+
+            prof = it.get('profession')
+
+            if prof and prof in exclude_professions:
+                print(f"[~] Excluding item {iid} (profession:{prof})")
+                continue
+
+            filtered.append(it)
+
+        items = filtered
+
+    sql_output = SQLGenerator.generate_item_loot_sql(item_id, items, item_name=item_name)
+
+    # Write to file
+    fname = os.path.join(outdir, f"loot_item_{item_id}_{sanitized}.sql")
+
+    if not sql_output.endswith("\n"):
+        sql_output = sql_output + "\n"
+
+    with open(fname, "w", encoding="utf-8") as f:
+        f.write(sql_output)
+
+    print(f"[+] Written output for Item {item_id} → {fname}")
+
+    return True
+
+
 def main():
     """Main entry point."""
     parser = argparse.ArgumentParser(
         description="Wowhead loot extractor for NPCs - generates SQL blocks for SPP-Legion"
     )
-    parser.add_argument(
+    # Require exactly one of --npc, --object or --item
+    group = parser.add_mutually_exclusive_group(required=True)
+
+    group.add_argument(
         "--npc",
-        required=True,
         help="Comma-separated list of NPC IDs to process (e.g. --npc 96028 or --npc 96028,12345)"
+    )
+
+    group.add_argument(
+        "--object",
+        help="Comma-separated list of GameObject IDs to process (e.g. --object 252452 or --object 252452,12345)"
+    )
+    group.add_argument(
+        "--item",
+        help="Comma-separated list of Item IDs (containers) to process (e.g. --item 44663 or --item 44663,12345)"
     )
     parser.add_argument(
         "--outdir",
@@ -242,11 +423,13 @@ def main():
     # Create output directory
     os.makedirs(args.outdir, exist_ok=True)
 
-    # Parse NPC list
-    npc_list = parse_npc_ids(args.npc)
+    # Parse target list (either NPCs, GameObjects or Items)
+    npc_list = parse_npc_ids(args.npc) if args.npc else []
+    object_list = parse_npc_ids(args.object) if args.object else []
+    item_list = parse_npc_ids(args.item) if args.item else []
 
-    if not npc_list:
-        print("[!] No valid NPC ids provided. Use --npc 96028 or --npc 96028,12345")
+    if not npc_list and not object_list and not item_list:
+        print("[!] No valid target ids provided. Use --npc, --object or --item with comma-separated ids")
 
         return
 
@@ -270,6 +453,34 @@ def main():
             )
         except Exception as e:
             print(f"[!] Unexpected error processing NPC {npc}: {e}")
+            traceback.print_exc()
+
+    for obj in object_list:
+        try:
+            process_object(
+                obj,
+                args.outdir,
+                use_cache=use_cache,
+                exclude_ids=exclude_ids,
+                exclude_qualities=exclude_qualities,
+                exclude_professions=exclude_professions,
+            )
+        except Exception as e:
+            print(f"[!] Unexpected error processing GameObject {obj}: {e}")
+            traceback.print_exc()
+
+    for itm in item_list:
+        try:
+            process_item(
+                itm,
+                args.outdir,
+                use_cache=use_cache,
+                exclude_ids=exclude_ids,
+                exclude_qualities=exclude_qualities,
+                exclude_professions=exclude_professions,
+            )
+        except Exception as e:
+            print(f"[!] Unexpected error processing Item {itm}: {e}")
             traceback.print_exc()
 
 if __name__ == "__main__":

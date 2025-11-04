@@ -18,6 +18,7 @@ from .config import (
     WOWHEAD_BASE_URL,
     WOWHEAD_NPC_URL,
     WOWHEAD_ITEM_URL,
+    WOWHEAD_OBJECT_URL,
 )
 
 from .utils import (
@@ -30,6 +31,7 @@ from .utils import (
 
 from .parser import (
     parse_npc_loot_data,
+    parse_object_loot_data,
     parse_item_page,
     extract_percent_from_modes,
 )
@@ -38,7 +40,10 @@ from .fetcher import (
     RetryableHTTPFetcher,
     NpcLootFetcher,
     ItemInfoFetcher,
+    ItemLootFetcher,
     NpcNameFetcher,
+    GameObjectLootFetcher,
+    ObjectNameFetcher,
 )
 
 from .enricher import (
@@ -75,6 +80,7 @@ __all__ = [
 
     # Parser
     'parse_npc_loot_data',
+    'parse_object_loot_data',
     'parse_item_page',
     'extract_percent_from_modes',
 
@@ -82,7 +88,10 @@ __all__ = [
     'RetryableHTTPFetcher',
     'NpcLootFetcher',
     'ItemInfoFetcher',
+    'ItemLootFetcher',
     'NpcNameFetcher',
+    'ObjectNameFetcher',
+    'GameObjectLootFetcher',
 
     # Enricher
     'ItemEnricher',
@@ -90,4 +99,7 @@ __all__ = [
     
     # SQL Generator
     'SQLGenerator',
+    'GameObjectLootFetcher',
+    'ObjectNameFetcher',
+    'WOWHEAD_OBJECT_URL',
 ]
