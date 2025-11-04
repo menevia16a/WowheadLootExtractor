@@ -188,7 +188,7 @@ def process_npc(npc_id, outdir, use_cache=True, exclude_ids=None, exclude_qualit
     sql_output = SQLGenerator.generate_loot_sql(npc_id, items, npc_name=npc_name)
 
     # Write to file
-    fname = os.path.join(outdir, f"loot_{npc_id}_{sanitized}.sql")
+    fname = os.path.join(outdir, f"loot_npc_{npc_id}_{sanitized}.sql")
 
     # Ensure output ends with single newline
     if not sql_output.endswith("\n"):
