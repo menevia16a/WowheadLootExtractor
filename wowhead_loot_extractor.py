@@ -15,6 +15,7 @@ from utils import (
     NpcLootFetcher, ItemInfoFetcher, NpcNameFetcher,
     ItemEnricher, SQLGenerator, sanitize_filename
 )
+from utils import PROFESSIONS, QUALITY_LABELS
 
 def parse_npc_ids(npc_arg):
     """
@@ -39,7 +40,74 @@ def parse_npc_ids(npc_arg):
     return npc_list
 
 
-def process_npc(npc_id, outdir, use_cache=True):
+def parse_exclude_ids(exclude_arg):
+    """
+    Parse comma-separated list of numeric IDs for --exclude flag.
+
+    Returns a set of ints.
+    """
+    ids = set()
+
+    for part in re.split(r'\s*,\s*', (exclude_arg or '').strip()):
+        if not part:
+            continue
+        try:
+            ids.add(int(part))
+        except ValueError:
+            print(f"[!] Invalid id in --exclude: {part}")
+
+    return ids
+
+
+def parse_quality_list(q_arg):
+    """
+    Parse comma-separated quality names for --exclude-quality.
+
+    Validates against QUALITY_LABELS values. Returns a set of lowercase strings.
+    """
+    allowed = set(v.lower() for v in QUALITY_LABELS.values())
+    quals = set()
+
+    for part in re.split(r'\s*,\s*', (q_arg or '').strip()):
+        if not part:
+            continue
+
+        p = part.lower()
+
+        if p not in allowed:
+            print(f"[!] Invalid quality for --exclude-quality: {part}. Allowed: {', '.join(sorted(allowed))}")
+            continue
+
+        quals.add(p)
+
+    return quals
+
+
+def parse_profession_list(p_arg):
+    """
+    Parse comma-separated profession names for --exclude-profession.
+
+    Validates against PROFESSIONS keys. Returns a set of normalized profession keys.
+    """
+    allowed = set(PROFESSIONS.keys())
+    profs = set()
+
+    for part in re.split(r'\s*,\s*', (p_arg or '').strip()):
+        if not part:
+            continue
+
+        p = part.lower()
+
+        if p not in allowed:
+            print(f"[!] Invalid profession for --exclude-profession: {part}. Allowed: {', '.join(sorted(allowed))}")
+            continue
+
+        profs.add(PROFESSIONS[p])
+
+    return profs
+
+
+def process_npc(npc_id, outdir, use_cache=True, exclude_ids=None, exclude_qualities=None, exclude_professions=None):
     """
     Process a single NPC: fetch loot, enrich data, generate SQL.
     
@@ -82,6 +150,40 @@ def process_npc(npc_id, outdir, use_cache=True):
     print(f"[+] NPC {npc_id} name: {npc_name} -> {sanitized}")
 
     # Generate SQL
+    # Apply exclusions (ids, qualities, professions)
+    exclude_ids = exclude_ids or set()
+    exclude_qualities = set(q.lower() for q in (exclude_qualities or set()))
+    exclude_professions = set(exclude_professions or set())
+
+    if exclude_ids or exclude_qualities or exclude_professions:
+        filtered = []
+
+        for it in items:
+            iid = it.get('id')
+
+            # Exclude by explicit id
+            if iid in exclude_ids:
+                print(f"[~] Excluding item {iid}")
+                continue
+
+            # Exclude by quality label
+            qlabel = QUALITY_LABELS.get(int(it.get('quality', 0)), '').lower()
+
+            if qlabel and qlabel in exclude_qualities:
+                print(f"[~] Excluding item {iid} (quality:{qlabel})")
+                continue
+
+            # Exclude by profession
+            prof = it.get('profession')
+
+            if prof and prof in exclude_professions:
+                print(f"[~] Excluding item {iid} (profession:{prof})")
+                continue
+
+            filtered.append(it)
+
+        items = filtered
+
     sql_output = SQLGenerator.generate_loot_sql(npc_id, items, npc_name=npc_name)
 
     # Write to file
@@ -119,6 +221,21 @@ def main():
         action="store_true",
         help="Disable item page caching"
     )
+    parser.add_argument(
+        "--exclude",
+        help="Comma-separated list of item IDs to exclude from output (e.g. --exclude 123,456)",
+        default=""
+    )
+    parser.add_argument(
+        "--exclude-quality",
+        help="Comma-separated list of quality names to exclude (e.g. --exclude-quality uncommon,rare)",
+        default=""
+    )
+    parser.add_argument(
+        "--exclude-profession",
+        help="Comma-separated list of profession names to exclude (e.g. --exclude-profession tailoring)",
+        default=""
+    )
 
     args = parser.parse_args()
 
@@ -136,9 +253,21 @@ def main():
     # Process each NPC
     use_cache = not args.no_cache
 
+    # Parse exclusion flags
+    exclude_ids = parse_exclude_ids(args.exclude)
+    exclude_qualities = parse_quality_list(args.exclude_quality)
+    exclude_professions = parse_profession_list(args.exclude_profession)
+
     for npc in npc_list:
         try:
-            process_npc(npc, args.outdir, use_cache=use_cache)
+            process_npc(
+                npc,
+                args.outdir,
+                use_cache=use_cache,
+                exclude_ids=exclude_ids,
+                exclude_qualities=exclude_qualities,
+                exclude_professions=exclude_professions,
+            )
         except Exception as e:
             print(f"[!] Unexpected error processing NPC {npc}: {e}")
             traceback.print_exc()

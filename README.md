@@ -53,6 +53,40 @@ Specify a custom output directory:
 python wowhead_loot_extractor.py --npc 96028 --outdir my_loot_tables
 ```
 
+### Exclusion flags
+
+You can fine-tune which items are included in the generated SQL using the following CLI flags:
+
+- `--exclude` — Comma-separated list of item IDs to always exclude. Example:
+
+```bash
+python wowhead_loot_extractor.py --npc 96028 --exclude 127048,127929
+```
+
+- `--exclude-quality` — Comma-separated list of quality names (case-insensitive) to exclude. Valid quality names are:
+   `poor`, `common`, `green`, `rare`, `epic`, `legendary`, `artifact`.
+
+Example excluding epic and legendary items:
+
+```bash
+python wowhead_loot_extractor.py --npc 96028 --exclude-quality epic,legendary
+```
+
+- `--exclude-profession` — Comma-separated list of profession names to exclude recipe drops from. Supported professions (case-insensitive):
+   `alchemy`, `enchanting`, `jewelcrafting`, `inscription`, `leatherworking`, `blacksmithing`, `engineering`, `tailoring`, `herbalism`, `cooking`.
+
+Example excluding tailoring and alchemy recipes:
+
+```bash
+python wowhead_loot_extractor.py --npc 96028 --exclude-profession tailoring,alchemy
+```
+
+Notes:
+
+- Input values are validated and case-insensitive; invalid tokens will print a warning and be ignored.
+- Exclusions are applied after item enrichment and any item-page lookups, so profession detection from item pages is respected.
+- You can combine flags to filter by id, quality and/or profession in a single run.
+
 ## Output
 
 The script generates SQL files in the output directory (default: `output/`):
