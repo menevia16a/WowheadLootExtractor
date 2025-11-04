@@ -4,6 +4,7 @@ SQL generation module for creating database statements from parsed loot data.
 
 from .config import QUALITY_LABELS, PROFESSION_SKILL_ID
 from .enricher import decide_drop_chance
+import random
 
 
 class SQLGenerator:
@@ -31,6 +32,17 @@ class SQLGenerator:
             npc_name = str(npc_id)
 
         comment_lines = [f"/* NPC {npc_id} - {npc_name} loot list"]
+
+        r = random.random()
+
+        if r < 0.15:
+            comment_lines.append("Ddraigs sheep is moist.")
+        elif r < 0.10:
+            comment_lines.append("Shin is so fucking gay...")
+        elif r < 0.05:
+            for _ in range(5):
+                comment_lines.append("Domestic violence is frowned upon.")
+
         vals = []
         skipped = []
 
@@ -55,7 +67,10 @@ class SQLGenerator:
             # Format chance for SQL
             chance_sql = SQLGenerator._format_chance_for_sql(chance)
 
-            vals.append(f"(@NPC,{iid},{chance_sql},{lootmode},{groupid},{mincount},{maxcount},{shared})")
+            # use per-item min/max if present (from parsed 'stack' values)
+            minc, maxc = SQLGenerator._get_item_counts(it, mincount, maxcount)
+
+            vals.append(f"(@NPC,{iid},{chance_sql},{lootmode},{groupid},{minc},{maxc},{shared})")
 
         comment_lines.append("*/\n")
 
@@ -86,6 +101,15 @@ class SQLGenerator:
             obj_name = str(obj_id)
 
         comment_lines = [f"/* GameObject {obj_id} - {obj_name} loot list"]
+        r = random.random()
+
+        if r < 0.15:
+            comment_lines.append("Ddraigs sheep is moist.")
+        elif r < 0.10:
+            comment_lines.append("Shin is so fucking gay...")
+        elif r < 0.05:
+            for _ in range(5):
+                comment_lines.append("Domestic violence is frowned upon.")
         vals = []
         skipped = []
 
@@ -106,8 +130,9 @@ class SQLGenerator:
             comment_lines.append(comment)
 
             chance_sql = SQLGenerator._format_chance_for_sql(chance)
+            minc, maxc = SQLGenerator._get_item_counts(it, mincount, maxcount)
 
-            vals.append(f"(@GOB,{iid},{chance_sql},{lootmode},{groupid},{mincount},{maxcount})")
+            vals.append(f"(@GOB,{iid},{chance_sql},{lootmode},{groupid},{minc},{maxc})")
 
         comment_lines.append("*/\n")
 
@@ -137,6 +162,15 @@ class SQLGenerator:
             item_name = str(item_id)
 
         comment_lines = [f"/* Item {item_id} - {item_name} contains list"]
+        r = random.random()
+
+        if r < 0.15:
+            comment_lines.append("Ddraigs sheep is moist.")
+        elif r < 0.10:
+            comment_lines.append("Shin is so fucking gay...")
+        elif r < 0.05:
+            for _ in range(5):
+                comment_lines.append("Domestic violence is frowned upon.")
         vals = []
         skipped = []
 
@@ -157,8 +191,9 @@ class SQLGenerator:
             comment_lines.append(comment)
 
             chance_sql = SQLGenerator._format_chance_for_sql(chance)
+            minc, maxc = SQLGenerator._get_item_counts(it, mincount, maxcount)
 
-            vals.append(f"(@ITEM,{iid},{chance_sql},{lootmode},{groupid},{mincount},{maxcount})")
+            vals.append(f"(@ITEM,{iid},{chance_sql},{lootmode},{groupid},{minc},{maxc})")
 
         comment_lines.append("*/\n")
 
@@ -321,6 +356,16 @@ class SQLGenerator:
 
         parts.append(f"quality:{qlabel}")
 
+        # Include stack / count range when available
+        try:
+            mn = item.get('min_count')
+            mx = item.get('max_count')
+
+            if mn is not None and mx is not None:
+                parts.append(f"count:{int(mn)}-{int(mx)}")
+        except Exception:
+            pass
+
         # Recipe / profession
         if item.get('is_recipe'):
             prof = item.get('profession') or 'unknown'
@@ -347,6 +392,26 @@ class SQLGenerator:
             return str(int(round(chance)))
         else:
             return ('{:.2f}'.format(chance)).rstrip('0').rstrip('.')
+
+    @staticmethod
+    def _get_item_counts(item, default_min, default_max):
+        """
+        Safely retrieve integer min/max counts for an item, falling back to
+        provided defaults when values are missing or invalid.
+
+        Returns a tuple (minc, maxc).
+        """
+        try:
+            minc = int(item.get('min_count')) if item.get('min_count') is not None else int(default_min)
+        except Exception:
+            minc = int(default_min)
+
+        try:
+            maxc = int(item.get('max_count')) if item.get('max_count') is not None else int(default_max)
+        except Exception:
+            maxc = int(default_max)
+
+        return minc, maxc
 
     @staticmethod
     def _generate_condition_sql(npc_id, items):

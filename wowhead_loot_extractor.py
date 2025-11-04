@@ -2,7 +2,7 @@
 """
 Wowhead Loot Extractor - Main entry point.
 
-Given a comma-separated list of NPC IDs, scrapes Wowhead for their loot tables
+Given a comma-separated list of NPC/OBJECT/ITEM IDs, scrapes Wowhead for their loot tables
 and generates SQL blocks for SPP-Legion's database.
 """
 
@@ -373,48 +373,74 @@ def process_item(item_id, outdir, use_cache=True, exclude_ids=None, exclude_qual
 
 def main():
     """Main entry point."""
-    parser = argparse.ArgumentParser(
-        description="Wowhead loot extractor for NPCs - generates SQL blocks for SPP-Legion"
+    # Use a combined formatter to show defaults and preserve description formatting
+    class _HelpFormatter(argparse.ArgumentDefaultsHelpFormatter, argparse.RawDescriptionHelpFormatter):
+        pass
+
+    EXAMPLES = (
+        "Examples:\n"
+        "  Extract loot for a single NPC:\n"
+        "    python wowhead_loot_extractor.py --npc 96028\n\n"
+        "  Extract contained loot for an item (container):\n"
+        "    python wowhead_loot_extractor.py --item 44663\n\n"
+        "  Extract multiple targets at once:\n"
+        "    python wowhead_loot_extractor.py --npc 96028,12345 --outdir my_output"
     )
+
+    parser = argparse.ArgumentParser(
+        description="Generate SQL loot blocks from Wowhead for NPCs, GameObjects or Items.",
+        formatter_class=_HelpFormatter,
+        epilog=EXAMPLES
+    )
+
+    # Version flag
+    parser.add_argument('--version', action='version', version='Wowhead Loot Extractor 1.0')
+
     # Require exactly one of --npc, --object or --item
     group = parser.add_mutually_exclusive_group(required=True)
 
+    # Input arguments (concise help). Longer examples live in the epilog.
     group.add_argument(
         "--npc",
-        help="Comma-separated list of NPC IDs to process (e.g. --npc 96028 or --npc 96028,12345)"
+        help="Comma-separated list of NPC IDs to process (e.g. 96028 or 96028,12345)"
     )
-
     group.add_argument(
         "--object",
-        help="Comma-separated list of GameObject IDs to process (e.g. --object 252452 or --object 252452,12345)"
+        help="Comma-separated list of GameObject IDs to process (e.g. 252452 or 252452,12345)"
     )
     group.add_argument(
         "--item",
-        help="Comma-separated list of Item IDs (containers) to process (e.g. --item 44663 or --item 44663,12345)"
+        help="Comma-separated list of Item IDs (containers) to process (e.g. 44663 or 44663,12345)"
     )
-    parser.add_argument(
+
+    # Output / cache options grouped for readability
+    outgrp = parser.add_argument_group('Output & Cache')
+    outgrp.add_argument(
         "--outdir",
         default="output",
-        help="Directory for output files (default: output)"
+        help="Directory for output files"
     )
-    parser.add_argument(
+    outgrp.add_argument(
         "--no-cache",
         action="store_true",
         help="Disable item page caching"
     )
-    parser.add_argument(
+
+    # Exclusion options grouped under a clear heading
+    excl = parser.add_argument_group('Exclusions')
+    excl.add_argument(
         "--exclude",
-        help="Comma-separated list of item IDs to exclude from output (e.g. --exclude 123,456)",
+        help="Comma-separated list of item IDs to exclude from output (e.g. 123,456)",
         default=""
     )
-    parser.add_argument(
+    excl.add_argument(
         "--exclude-quality",
-        help="Comma-separated list of quality names to exclude (e.g. --exclude-quality uncommon,rare)",
+        help="Comma-separated list of quality names to exclude (e.g. uncommon,rare)",
         default=""
     )
-    parser.add_argument(
+    excl.add_argument(
         "--exclude-profession",
-        help="Comma-separated list of profession names to exclude (e.g. --exclude-profession tailoring)",
+        help="Comma-separated list of profession names to exclude (e.g. tailoring)",
         default=""
     )
 

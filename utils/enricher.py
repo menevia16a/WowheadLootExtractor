@@ -76,6 +76,8 @@ class ItemEnricher:
                 'is_quest': is_quest,
                 'is_legendary': is_legendary,
                 'drop_chance': it.get('drop_chance'),
+                'min_count': it.get('min_count'),
+                'max_count': it.get('max_count'),
                 'classs': it.get('classs'),
                 'subclass': it.get('subclass')
             })

@@ -176,6 +176,8 @@ class ItemInfoFetcher:
             "profession": None,
             "is_quest": False,
             "is_legendary": False,
+            "min_count": None,
+            "max_count": None,
         }
 
         # Check cache first

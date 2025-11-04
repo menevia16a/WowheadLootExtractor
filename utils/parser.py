@@ -172,6 +172,7 @@ def parse_npc_loot_data(html, npc_id):
 
         for o in obj_strs:
             item_data = _parse_item_object(o)
+
             if item_data:
                 candidate_loot.append(item_data)
 
@@ -227,6 +228,8 @@ def parse_npc_loot_data(html, npc_id):
             "is_quest": is_quest,
             "is_legendary": is_legendary,
             "drop_chance": item.get('drop_chance'),
+            "min_count": item.get('min_count'),
+            "max_count": item.get('max_count'),
             "classs": item.get('classs'),
             "subclass": item.get('subclass')
         })
@@ -388,6 +391,8 @@ def parse_object_loot_data(html, obj_id):
             "is_quest": is_quest,
             "is_legendary": is_legendary,
             "drop_chance": item.get('drop_chance'),
+            "min_count": item.get('min_count'),
+            "max_count": item.get('max_count'),
             "classs": item.get('classs'),
             "subclass": item.get('subclass')
         })
@@ -493,6 +498,36 @@ def _parse_item_object(obj_str):
             except Exception:
                 drop_chance = None
 
+    # Extract stack/min-max quantities for contained items (e.g. [20,40])
+    min_count = None
+    max_count = None
+
+    try:
+        # accept quoted or unquoted key names (Wowhead data sometimes omits quotes)
+        stack_m = re.search(r"(?:['\"]?stack['\"]?)\s*:\s*\[\s*(\d+)\s*,\s*(\d+)\s*\]", obj_str)
+
+        if stack_m:
+            try:
+                min_count = int(stack_m.group(1))
+                max_count = int(stack_m.group(2))
+            except Exception:
+                min_count = None
+                max_count = None
+        else:
+            # some pages may present single-value stacks (e.g. [20])
+            stack_single = re.search(r"(?:['\"]?stack['\"]?)\s*:\s*\[\s*(\d+)\s*\]", obj_str)
+
+            if stack_single:
+                try:
+                    min_count = int(stack_single.group(1))
+                    max_count = int(stack_single.group(1))
+                except Exception:
+                    min_count = None
+                    max_count = None
+    except Exception:
+        min_count = None
+        max_count = None
+
     return {
         'id': item_id,
         'name': name,
@@ -500,7 +535,9 @@ def _parse_item_object(obj_str):
         'flags': flags_raw,
         'classs': classs_val,
         'subclass': subclass_val,
-        'drop_chance': drop_chance
+        'drop_chance': drop_chance,
+        'min_count': min_count,
+        'max_count': max_count
     }
 
 
@@ -830,6 +867,8 @@ def parse_item_loot_data(html, item_id):
             "is_quest": is_quest,
             "is_legendary": is_legendary,
             "drop_chance": item.get('drop_chance'),
+            "min_count": item.get('min_count'),
+            "max_count": item.get('max_count'),
             "classs": item.get('classs'),
             "subclass": item.get('subclass')
         })

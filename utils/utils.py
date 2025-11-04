@@ -26,8 +26,17 @@ def sanitize_filename(name, maxlen=64):
     # normalize whitespace
     s = str(name).strip()
 
-    # remove quotes and control chars
-    s = re.sub(r'["\'"\r\n\t]+', ' ', s)
+    # remove common possessive forms (e.g. "Adventurer's" -> "Adventurer")
+    # handle straight and typographic apostrophes
+    try:
+        s = re.sub(r"(?i)(?:’|')s\b", '', s)
+    except Exception:
+        # fall back silently if regex fails for any reason
+        pass
+
+    # remove quotes and control chars (keep as simple spaces)
+    s = re.sub(r'[\r\n\t]+', ' ', s)
+    s = s.replace('"', '').replace("'", '')
 
     # Replace any sequence of non-alnum with underscore
     s = re.sub(r'[^A-Za-z0-9]+', '_', s)
