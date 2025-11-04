@@ -225,10 +225,6 @@ This script is provided as-is.
 - Currently the script only supports extracting loot tables for NPCs. This covers the vast majority of creature drops but omits other Wowhead types.
 - Planned expansions (future work):
    - Add support for GameObjects (e.g., chests) loot tables.
-   - Add support for Spell-sourced drops
-   - Optional CLI flags to fine-tune behavior:
-      - Exclude specified professions
-      - Exclude specified item qualities
-      - Exclude specified item IDs
+   - Add support for Items (e.g. Sack of Gems) loot tables.
 
 These additions will be implemented when time permits, but the core extraction and SQL-generation for NPCs is stable now.
