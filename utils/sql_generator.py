@@ -108,16 +108,14 @@ class SQLGenerator:
         # Quality label
         q = int(item.get('quality', 0) or 0)
         qlabel = QUALITY_LABELS.get(q, f'q{q}')
+
         parts.append(f"quality:{qlabel}")
 
         # Recipe / profession
         if item.get('is_recipe'):
             prof = item.get('profession') or 'unknown'
+            
             parts.append(f"{prof} (recipe)")
-
-        # Legendary marker
-        if item.get('is_legendary'):
-            parts.append('legendary')
 
         # Item name
         parts.append(f"name:{item.get('name')}")
