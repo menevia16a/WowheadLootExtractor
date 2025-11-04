@@ -5,7 +5,7 @@ A Python script that scrapes Wowhead for NPC loot tables and generates SQL block
 ## Features
 
 - Scrapes NPC loot tables
-- Scrapes NPC loot tables
+- Scrapes Item loot tables
 - Scrapes GameObject (chest/container) loot tables
 - Automatically detects quest items and applies negative drop rates
 - Identifies profession recipes and generates appropriate loot conditions
@@ -13,7 +13,7 @@ A Python script that scrapes Wowhead for NPC loot tables and generates SQL block
 - Excludes specific problematic item IDs
 - Intelligent retry logic with exponential backoff for rate limiting
 - Local caching to avoid repeated requests
-- Supports multiple NPCs in a single run
+- Supports multiple NPCs/Objects/Items in a single run
 
 ## Requirements
 

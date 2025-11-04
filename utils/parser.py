@@ -148,8 +148,8 @@ def parse_npc_loot_data(html, npc_id):
 
         block = html[brace_idx:end_brace+1]
 
-        # We're looking for the Listview block that contains object contents
-        if not re.search(r"id\s*:\s*['\"][^'\"]*(contains)[^'\"]*['\"]", block, flags=re.I):
+        # We're looking for the Listview block that contains npc drops
+        if not re.search(r"id\s*:\s*['\"]drops['\"]", block):
             continue
 
         # locate data: [ ... ] inside the block
