@@ -2,8 +2,9 @@
 Configuration constants for the Wowhead Loot Extractor.
 """
 
-# Maximum item ID for Legion expansion
-MAX_ITEM_ID_LEGION = 157831
+# Maximum item ID to pull loot for
+# Legion expansion max is 157831
+MAX_ITEM_ID = 157831
 
 # Item IDs to exclude from loot tables
 EXCLUDED_ITEM_IDS = {

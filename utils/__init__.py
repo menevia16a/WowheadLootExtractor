@@ -3,7 +3,7 @@ Utils package - Contains all supporting modules for Wowhead Loot Extractor.
 """
 
 from .config import (
-    MAX_ITEM_ID_LEGION,
+    MAX_ITEM_ID,
     EXCLUDED_ITEM_IDS,
     PROFESSIONS,
     PROFESSION_SKILL_ID,
@@ -55,7 +55,7 @@ from .sql_generator import SQLGenerator
 
 __all__ = [
     # Config
-    'MAX_ITEM_ID_LEGION',
+    'MAX_ITEM_ID',
     'EXCLUDED_ITEM_IDS',
     'PROFESSIONS',
     'PROFESSION_SKILL_ID',
