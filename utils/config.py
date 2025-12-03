@@ -60,7 +60,7 @@ REQUEST_TIMEOUT = 10
 QUALITY_LABELS = {
     0: 'poor',
     1: 'common',
-    2: 'green',
+    2: 'uncommon',
     3: 'rare',
     4: 'epic',
     5: 'legendary',
