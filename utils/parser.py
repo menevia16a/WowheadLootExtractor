@@ -7,7 +7,7 @@ import json
 from bs4 import BeautifulSoup
 
 from .config import (
-    MAX_ITEM_ID_LEGION, EXCLUDED_ITEM_IDS, PROFESSIONS,
+    MAX_ITEM_ID, EXCLUDED_ITEM_IDS, PROFESSIONS,
     QUEST_ITEM_CLASS, RECIPE_KEYWORDS
 )
 from .utils import find_matching_bracket, extract_objects_from_array_str, clean_js_string, compute_depth_at
@@ -198,8 +198,8 @@ def parse_npc_loot_data(html, npc_id):
 
         if item_id is None:
             continue
-        if item_id > MAX_ITEM_ID_LEGION:
-            # skip newer-than-Legion item
+        if item_id > MAX_ITEM_ID:
+            # skip any items above this value (limit expansion drops)
             continue
         if item_id in EXCLUDED_ITEM_IDS:
             # skip excluded item
@@ -361,8 +361,8 @@ def parse_object_loot_data(html, obj_id):
 
         if item_id is None:
             continue
-        if item_id > MAX_ITEM_ID_LEGION:
-            # skip newer-than-Legion item
+        if item_id > MAX_ITEM_ID:
+            # skip any items above this value (limit expansion drops)
             continue
         if item_id in EXCLUDED_ITEM_IDS:
             # skip excluded item
@@ -840,7 +840,7 @@ def parse_item_loot_data(html, item_id):
 
         if item_id_val is None:
             continue
-        if item_id_val > MAX_ITEM_ID_LEGION:
+        if item_id_val > MAX_ITEM_ID:
             continue
         if item_id_val in EXCLUDED_ITEM_IDS:
             continue
