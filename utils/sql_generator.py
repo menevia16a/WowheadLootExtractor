@@ -256,7 +256,7 @@ class SQLGenerator:
         for it in items:
             iid = it['id']
             chance = decide_drop_chance(it)
-            print(f"chance for item {iid} is {chance}\n")
+
             if chance is None:
                 skipped.append(iid)
                 continue
