@@ -874,3 +874,168 @@ def parse_item_loot_data(html, item_id):
         })
 
     return items
+
+def parse_zone_loot_data(html, zone_id):
+    """
+    Parse loot/contains data for an item page.
+
+    Scans all new Listview(...) blocks in the HTML and picks the
+    candidate array (data: [ ... ]) that contains the most item objects
+    and looks like a contains block.
+
+    Returns a list of item dicts compatible with the enricher expectation
+    (id, name, quality, etc.).
+    """
+    loot = []
+
+    # candidates: list of tuples (candidate_loot_list, is_contains_block)
+    candidates = []
+
+    for m in re.finditer(r'new Listview\s*\(', html):
+        start_paren = m.end()
+        brace_idx = html.find('{', start_paren)
+
+        if brace_idx == -1:
+            continue
+
+        end_brace = find_matching_bracket(html, brace_idx, '{', '}')
+
+        if end_brace == -1:
+            continue
+
+        block = html[brace_idx:end_brace+1]
+
+        # Find contains block
+        if not re.search(r"id\s*:\s*['\"][^'\"]*(fishing)[^'\"]*['\"]", block, flags=re.I):
+            # still accept blocks that simply have a data: [ ... ] and item objects
+            if not re.search(r'data\s*:\s*\[', block):
+                continue
+
+        # data may be inline (data: [ ... ]) or a variable reference (data: someVar)
+        mdata = re.search(r"data\s*:\s*(\[|[A-Za-z0-9_\$\.]+)", block)
+
+        if not mdata:
+            continue
+
+        data_str = None
+
+        if mdata.group(1) == '[':
+            # inline array inside the Listview block
+            data_start = block.find('[', mdata.start())
+            data_end = find_matching_bracket(block, data_start, '[', ']')
+
+            if data_end == -1:
+                continue
+
+            data_str = block[data_start+1:data_end]
+        else:
+            # data references a variable name; try to find its array assignment elsewhere
+            varname = mdata.group(1).strip()
+
+            # look for patterns like: var varname = [ ... ] or window.varname = [ ... ] or varname = [ ... ]
+            pat = re.compile(r'(?:var\s+|window\.)?' + re.escape(varname) + r'\s*=\s*\[', flags=re.I)
+            mvar = pat.search(html)
+
+            if not mvar:
+                # limit scan to a reasonable window around this listview to avoid false positives
+                scan_start = max(0, brace_idx - 5000)
+                scan_end = min(len(html), end_brace + 5000)
+                mvar = pat.search(html[scan_start:scan_end])
+
+                if not mvar:
+                    continue
+
+                var_idx = scan_start + mvar.start()
+            else:
+                var_idx = mvar.start()
+
+            arr_start = html.find('[', var_idx)
+
+            if arr_start == -1:
+                continue
+
+            arr_end = find_matching_bracket(html, arr_start, '[', ']')
+
+            if arr_end == -1:
+                continue
+
+            data_str = html[arr_start+1:arr_end]
+
+        if not data_str:
+            continue
+
+        obj_strs = extract_objects_from_array_str(data_str)
+        candidate_loot = []
+
+        for o in obj_strs:
+            item_data = _parse_item_object(o)
+
+            if item_data:
+                candidate_loot.append(item_data)
+
+        if candidate_loot:
+            # detect whether this listview's id contains the word 'contains'
+            is_contains = bool(re.search(r"id\s*:\s*['\"][^'\"]*(contains)[^'\"]*['\"]", block, flags=re.I))
+
+            candidates.append((candidate_loot, is_contains))
+
+    if candidates:
+        # Prefer candidates that explicitly look like a 'contains' block
+        contains_candidates = [c for c in candidates if c[1]]
+
+        if contains_candidates:
+            # choose the contains candidate with the most items
+            loot = max(contains_candidates, key=lambda c: len(c[0]))[0]
+        else:
+            # fall back to the largest candidate overall
+            loot = max(candidates, key=lambda c: len(c[0]))[0]
+
+    if not loot:
+        print(f"[!] Could not locate listview/contains JSON for zone {zone_id}")
+        
+        return []
+
+    # Filter and normalize
+    items = []
+
+    for item in loot:
+        item_id_val = item.get("id")
+        name = item.get("name", "")
+        quality = item.get("quality", 0)
+
+        if item_id_val is None:
+            continue
+        if item_id_val > MAX_ITEM_ID:
+            continue
+        if item_id_val in EXCLUDED_ITEM_IDS:
+            continue
+
+        is_recipe = False
+        profession = None
+        lower_name = (name or '').lower()
+
+        for prof in PROFESSIONS:
+            if f"recipe: " in lower_name and prof in lower_name:
+                is_recipe = True
+                profession = PROFESSIONS[prof]
+                break
+
+        is_quest = (item.get("classs") == QUEST_ITEM_CLASS) or "quest item" in lower_name or ("quest" in str(item.get('flags', '')).lower())
+        is_legendary = (quality >= 5)
+
+        items.append({
+            "id": item_id_val,
+            "name": name,
+            "quality": quality,
+            "is_recipe": is_recipe,
+            "profession": profession,
+            "is_quest": is_quest,
+            "is_legendary": is_legendary,
+            "drop_chance": item.get('drop_chance'),
+            "min_count": item.get('min_count'),
+            "max_count": item.get('max_count'),
+            "classs": item.get('classs'),
+            "subclass": item.get('subclass')
+        })
+
+    return items

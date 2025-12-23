@@ -232,6 +232,73 @@ class SQLGenerator:
         return "\n".join(comment_lines + sql_lines)
 
     @staticmethod
+    def generate_zone_loot_sql(zone_id, items, zone_name=None, reference=0, needsquest=0, lootmode=1, groupid=0, mincount=1, maxcount=1):
+        """
+        Generate SQL for fishing loot tables. Uses fishing_loot_template 
+        table and @ZONE variable. Conditions use SourceType 3.
+        """
+        if not zone_name:
+            zone_name = str(zone_id)
+
+        comment_lines = [f"/* Zone {zone_id} - {zone_name} loot list"]
+        r = random.random()
+
+        if r < 0.15:
+            comment_lines.append("Ddraigs sheep is moist.")
+        elif r < 0.10:
+            comment_lines.append("Shin is so fucking gay...")
+        elif r < 0.05:
+            for _ in range(5):
+                comment_lines.append("Domestic violence is frowned upon.")
+        vals = []
+        skipped = []
+
+        for it in items:
+            iid = it['id']
+            chance = decide_drop_chance(it)
+            print(f"chance for item {iid} is {chance}\n")
+            if chance is None:
+                skipped.append(iid)
+                continue
+
+            comment_parts = SQLGenerator._build_item_comment_parts(it, chance)
+            comment = f"{iid}"
+
+            if comment_parts:
+                comment += " -- " + " -- ".join(comment_parts)
+                thisComment = " ".join(comment_parts).split(":")[4]
+
+            comment_lines.append(comment)
+
+            chance_sql = SQLGenerator._format_chance_for_sql(chance)
+            minc, maxc = SQLGenerator._get_item_counts(it, mincount, maxcount)
+            
+            # re-format from old style to newer TC for quest/chance
+            if chance < 0:
+                needsquest = 1
+                chance = chance * -1
+
+            vals.append(f"(@ZONE,{iid},{reference},{chance_sql},{needsquest},{lootmode},{groupid},{minc},{maxc},\"{thisComment}\")")
+
+        comment_lines.append("*/\n")
+
+        sql_lines = []
+        sql_lines.append(f"SET @ZONE := {zone_id};")
+        sql_lines.append("REPLACE INTO fishing_loot_template (`entry`,`item`,`reference`,`chance`,`needsquest`,`lootmode`,`groupid`,`mincount`,`maxcount`,`comment`) VALUES")
+
+        if skipped:
+            print(f"[!] Skipping {len(skipped)} items with no zone-provided drop chance: {skipped}")
+
+        sql_lines.append(",\n".join(vals) + ";")
+
+        condition_sql = SQLGenerator._generate_condition_sql_for_fishing(zone_id, items)
+
+        if condition_sql:
+            sql_lines.append(condition_sql)
+
+        return "\n".join(comment_lines + sql_lines)
+
+    @staticmethod
     def _generate_condition_sql_for_item(item_id, items):
         """
         Generate conditions for item-contained recipe drops. Uses SourceTypeOrReferenceId=5
@@ -338,6 +405,61 @@ class SQLGenerator:
         sql_lines.append(",\n".join(cond_vals) + ";")
 
         return "\n".join(sql_lines)
+
+    @staticmethod
+    def _generate_condition_sql_for_fishing(zone_id, items):
+        """
+        Generate conditions for fishing recipe drops. Uses SourceTypeOrReferenceId=3
+        and the @ZONE variable.
+        """
+        recipe_items = [
+            it for it in items
+            if it.get('is_recipe') and it.get('profession') and it.get('id')
+        ]
+
+        recipe_with_spell = [
+            (it['id'], it['profession'])
+            for it in recipe_items
+            if PROFESSION_SKILL_ID.get(it['profession'])
+        ]
+
+        if not recipe_with_spell:
+            return ""
+
+        sql_lines = []
+        ids = ",".join(str(i) for i, _ in recipe_with_spell)
+
+        sql_lines.append("\n-- loot conditions")
+        sql_lines.append(
+            f"DELETE FROM conditions WHERE `SourceTypeOrReferenceId`=3\n"
+            f"    AND `SourceGroup`=@ZONE\n"
+            f"    AND `SourceEntry` IN ({ids}); -- item IDs"
+        )
+
+        sql_lines.append(
+            "INSERT INTO conditions (`SourceTypeOrReferenceId`, `SourceGroup`, `SourceEntry`, "
+            "`SourceId`, `ElseGroup`, `ConditionTypeOrReference`, `ConditionTarget`, "
+            "`ConditionValue1`, `ConditionValue2`, `ConditionValue3`, `NegativeCondition`, "
+            "`ErrorTextId`, `ScriptName`, `Comment`) VALUES"
+        )
+
+        cond_vals = []
+
+        for iid, prof in recipe_with_spell:
+            spell = PROFESSION_SKILL_ID.get(prof)
+
+            cond_vals.append(
+                f"(3, @ZONE, {iid}, 0, 1, 7, 0, {spell}, 1, 0, 0, 0, '', 'Item Drop - Has {prof.capitalize()}')"
+            )
+
+            cond_vals.append(
+                f"(3, @ZONE, {iid}, 0, 1, 2, 0, {iid}, 1, 1, 1, 0, '', 'Item Drop - No Item')"
+            )
+
+        sql_lines.append(",\n".join(cond_vals) + ";")
+
+        return "\n".join(sql_lines)
+
 
     @staticmethod
     def _build_item_comment_parts(item, chance):
