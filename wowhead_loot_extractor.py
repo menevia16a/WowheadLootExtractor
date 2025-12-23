@@ -444,7 +444,7 @@ def process_zone(zone_id, outdir, use_cache=True, exclude_ids=None, exclude_qual
     sql_output = SQLGenerator.generate_zone_loot_sql(zone_id, items, zone_name=zone_name)
 
     # Write to file
-    fname = os.path.join(outdir, f"loot_object_{zone_id}_{sanitized}.sql")
+    fname = os.path.join(outdir, f"loot_zone_{zone_id}_{sanitized}.sql")
 
     # Ensure output ends with single newline
     if not sql_output.endswith("\n"):
