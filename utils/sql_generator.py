@@ -37,9 +37,9 @@ class SQLGenerator:
 
         if r < 0.15:
             comment_lines.append("Ddraigs sheep is moist.")
-        elif r < 0.10:
+        if r < 0.10:
             comment_lines.append("Shin is so fucking gay...")
-        elif r < 0.05:
+        if r < 0.05:
             for _ in range(5):
                 comment_lines.append("Domestic violence is frowned upon.")
 
@@ -111,9 +111,9 @@ class SQLGenerator:
 
         if r < 0.15:
             comment_lines.append("Ddraigs sheep is moist.")
-        elif r < 0.10:
+        if r < 0.10:
             comment_lines.append("Shin is so fucking gay...")
-        elif r < 0.05:
+        if r < 0.05:
             for _ in range(5):
                 comment_lines.append("Domestic violence is frowned upon.")
         vals = []
@@ -178,9 +178,9 @@ class SQLGenerator:
 
         if r < 0.15:
             comment_lines.append("Ddraigs sheep is moist.")
-        elif r < 0.10:
+        if r < 0.10:
             comment_lines.append("Shin is so fucking gay...")
-        elif r < 0.05:
+        if r < 0.05:
             for _ in range(5):
                 comment_lines.append("Domestic violence is frowned upon.")
         vals = []
@@ -245,9 +245,9 @@ class SQLGenerator:
 
         if r < 0.15:
             comment_lines.append("Ddraigs sheep is moist.")
-        elif r < 0.10:
+        if r < 0.10:
             comment_lines.append("Shin is so fucking gay...")
-        elif r < 0.05:
+        if r < 0.05:
             for _ in range(5):
                 comment_lines.append("Domestic violence is frowned upon.")
         vals = []

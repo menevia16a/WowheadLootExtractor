@@ -447,6 +447,16 @@ def _parse_item_object(obj_str):
         except Exception:
             drop_chance = None
 
+    # Extract count field (used for fishing loot percentage calculation)
+    count_m = re.search(r"['\"]count['\"]\s*:\s*(\d+)", obj_str)
+    count = None
+
+    if count_m:
+        try:
+            count = int(count_m.group(1))
+        except Exception:
+            count = None
+
     # fallback: try to compute percent from modes
     if drop_chance is None:
         # First try to find top-level `count` and `outof` fields even if they're
@@ -536,6 +546,7 @@ def _parse_item_object(obj_str):
         'classs': classs_val,
         'subclass': subclass_val,
         'drop_chance': drop_chance,
+        'count': count,
         'min_count': min_count,
         'max_count': max_count
     }
@@ -870,8 +881,23 @@ def parse_item_loot_data(html, item_id):
             "min_count": item.get('min_count'),
             "max_count": item.get('max_count'),
             "classs": item.get('classs'),
-            "subclass": item.get('subclass')
+            "subclass": item.get('subclass'),
+            "count": item.get('count')
         })
+
+    # For fishing loot, calculate drop_chance from count values if not already set
+    # Calculate total count across all items
+    total_count = sum(it.get('count') or 0 for it in items)
+    
+    if total_count > 0:
+        for it in items:
+            if it.get('drop_chance') is None and it.get('count') is not None:
+                # Convert count to percentage: (count / total_count) * 100
+                it['drop_chance'] = round((float(it['count']) / float(total_count)) * 100.0, 2)
+
+                # If percentage rounds to 0, set to 0.1% as fallback (Wowhead just shows it as 0%)
+                if it['drop_chance'] == 0.0:
+                    it['drop_chance'] = 0.1 # This way we avoid zero chance entries
 
     return items
 
@@ -887,8 +913,9 @@ def parse_zone_loot_data(html, zone_id):
     (id, name, quality, etc.).
     """
     loot = []
+    total_count_value = None # For zone fishing loot, may have _totalCount
 
-    # candidates: list of tuples (candidate_loot_list, is_contains_block)
+    # candidates: list of tuples (candidate_loot_list, is_contains_block, block_str, total_count)
     candidates = []
 
     for m in re.finditer(r'new Listview\s*\(', html):
@@ -974,21 +1001,32 @@ def parse_zone_loot_data(html, zone_id):
                 candidate_loot.append(item_data)
 
         if candidate_loot:
-            # detect whether this listview's id contains the word 'contains'
-            is_contains = bool(re.search(r"id\s*:\s*['\"][^'\"]*(contains)[^'\"]*['\"]", block, flags=re.I))
+            # detect whether this listview's id contains the word 'fishing' (for zone fishing loot)
+            is_fishing = bool(re.search(r"id\s*:\s*['\"]fishing['\"]", block, flags=re.I))
+            
+            # Extract _totalCount if present (used for zone fishing loot)
+            total_count = None
+            total_match = re.search(r'_totalCount\s*:\s*(\d+)', block)
 
-            candidates.append((candidate_loot, is_contains))
+            if total_match:
+                total_count = int(total_match.group(1))
+
+            candidates.append((candidate_loot, is_fishing, block, total_count))
 
     if candidates:
-        # Prefer candidates that explicitly look like a 'contains' block
-        contains_candidates = [c for c in candidates if c[1]]
+        # Prefer fishing blocks which are zone-specific
+        fishing_candidates = [c for c in candidates if c[1]]
 
-        if contains_candidates:
-            # choose the contains candidate with the most items
-            loot = max(contains_candidates, key=lambda c: len(c[0]))[0]
+        if fishing_candidates:
+            # choose the fishing candidate (should only be one)
+            selected = max(fishing_candidates, key=lambda c: len(c[0]))
+            loot = selected[0]
+            total_count_value = selected[3]
         else:
             # fall back to the largest candidate overall
-            loot = max(candidates, key=lambda c: len(c[0]))[0]
+            selected = max(candidates, key=lambda c: len(c[0]))
+            loot = selected[0]
+            total_count_value = selected[3]
 
     if not loot:
         print(f"[!] Could not locate listview/contains JSON for zone {zone_id}")
@@ -1035,7 +1073,25 @@ def parse_zone_loot_data(html, zone_id):
             "min_count": item.get('min_count'),
             "max_count": item.get('max_count'),
             "classs": item.get('classs'),
-            "subclass": item.get('subclass')
+            "subclass": item.get('subclass'),
+            "count": item.get('count')
         })
+
+    # For fishing loot, calculate drop_chance from count values if not already set
+    # Use _totalCount from the Listview block if available, otherwise calculate from items
+    if total_count_value is not None:
+        total_count = total_count_value
+    else:
+        total_count = sum(it.get('count') or 0 for it in items)
+    
+    if total_count > 0:
+        for it in items:
+            if it.get('drop_chance') is None and it.get('count') is not None:
+                # Convert count to percentage: (count / total_count) * 100
+                it['drop_chance'] = round((float(it['count']) / float(total_count)) * 100.0, 2)
+
+                # If percentage rounds to 0, set to 0.1% as fallback
+                if it['drop_chance'] == 0.0:
+                    it['drop_chance'] = 0.1 # This way we avoid zero chance entries
 
     return items
