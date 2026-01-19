@@ -14,7 +14,7 @@ import traceback
 from utils import (
     NpcLootFetcher, ItemInfoFetcher, NpcNameFetcher,
     ItemEnricher, SQLGenerator, sanitize_filename,
-    GameObjectLootFetcher, ObjectNameFetcher, ItemLootFetcher
+    GameObjectLootFetcher, ObjectNameFetcher, ItemLootFetcher, ZoneLootFetcher, ZoneNameFetcher
 )
 from utils import PROFESSIONS, QUALITY_LABELS
 
@@ -371,6 +371,92 @@ def process_item(item_id, outdir, use_cache=True, exclude_ids=None, exclude_qual
     return True
 
 
+def process_zone(zone_id, outdir, use_cache=True, exclude_ids=None, exclude_qualities=None, exclude_professions=None):
+    """
+    Process a single Zone: fetch loot, enrich data, generate SQL.
+
+    Emits SQL into `fishing_loot_template` and writes conditions with SourceType 3.
+    """
+    # Initialize fetchers
+    loot_fetcher = ZoneLootFetcher()
+    
+    cache_dir = os.path.join(outdir, '.cache') if use_cache else None
+    item_fetcher = ItemInfoFetcher(cache_dir=cache_dir)
+    
+    name_fetcher = ZoneNameFetcher()
+
+    # Fetch raw loot data
+    items = loot_fetcher.fetch_loot(zone_id)
+
+    if not items:
+        print(f"[!] No items found for Zone {zone_id}, skipping.")
+
+        return False
+
+    # Enrich items with computed properties
+    items = ItemEnricher.enrich_item_data(items)
+
+    # Fetch item pages for recipes that lack profession detection
+    print(f"[+] Using cache directory: {cache_dir}")
+
+    items = ItemEnricher.update_from_item_page(items, item_fetcher)
+
+    # Fetch object name and sanitize for filename
+    zone_name = name_fetcher.fetch_object_name(zone_id)
+    sanitized = sanitize_filename(zone_name)
+
+    print(f"[+] Zone {zone_id} name: {zone_name} -> {sanitized}")
+
+    # Apply exclusions (ids, qualities, professions)
+    exclude_ids = exclude_ids or set()
+    exclude_qualities = set(q.lower() for q in (exclude_qualities or set()))
+    exclude_professions = set(exclude_professions or set())
+
+    if exclude_ids or exclude_qualities or exclude_professions:
+        filtered = []
+
+        for it in items:
+            iid = it.get('id')
+
+            # Exclude by explicit id
+            if iid in exclude_ids:
+                print(f"[~] Excluding item {iid}")
+                continue
+
+            # Exclude by quality label
+            qlabel = QUALITY_LABELS.get(int(it.get('quality', 0)), '').lower()
+
+            if qlabel and qlabel in exclude_qualities:
+                print(f"[~] Excluding item {iid} (quality:{qlabel})")
+                continue
+
+            # Exclude by profession
+            prof = it.get('profession')
+
+            if prof and prof in exclude_professions:
+                print(f"[~] Excluding item {iid} (profession:{prof})")
+                continue
+
+            filtered.append(it)
+
+        items = filtered
+
+    sql_output = SQLGenerator.generate_zone_loot_sql(zone_id, items, zone_name=zone_name)
+
+    # Write to file
+    fname = os.path.join(outdir, f"loot_zone_{zone_id}_{sanitized}.sql")
+
+    # Ensure output ends with single newline
+    if not sql_output.endswith("\n"):
+        sql_output = sql_output + "\n"
+
+    with open(fname, "w", encoding="utf-8") as f:
+        f.write(sql_output)
+
+    print(f"[+] Written output for Zone {zone_id} → {fname}")
+
+    return True
+
 def main():
     """Main entry point."""
     # Use a combined formatter to show defaults and preserve description formatting
@@ -381,14 +467,18 @@ def main():
         "Examples:\n"
         "  Extract loot for a single NPC:\n"
         "    python wowhead_loot_extractor.py --npc 96028\n\n"
+        "  Extract contained loot for a gameobject (container):\n"
+        "    python wowhead_loot_extractor.py --object 44663\n\n"
         "  Extract contained loot for an item (container):\n"
         "    python wowhead_loot_extractor.py --item 44663\n\n"
+        "  Extract fishing loot for a zone:\n"
+        "    python wowhead_loot_extractor.py --zone 13\n\n"
         "  Extract multiple targets at once:\n"
         "    python wowhead_loot_extractor.py --npc 96028,12345 --outdir my_output"
     )
 
     parser = argparse.ArgumentParser(
-        description="Generate SQL loot blocks from Wowhead for NPCs, GameObjects or Items.",
+        description="Generate SQL loot blocks from Wowhead for NPCs, GameObjects, Zone (fishing) or Items.",
         formatter_class=_HelpFormatter,
         epilog=EXAMPLES
     )
@@ -411,6 +501,10 @@ def main():
     group.add_argument(
         "--item",
         help="Comma-separated list of Item IDs (containers) to process (e.g. 44663 or 44663,12345)"
+    )
+    group.add_argument(
+        "--zone",
+        help="Comma-separated list of Zone IDs to process (e.g. 17 or 17,12345)"
     )
 
     # Output / cache options grouped for readability
@@ -453,9 +547,10 @@ def main():
     npc_list = parse_npc_ids(args.npc) if args.npc else []
     object_list = parse_npc_ids(args.object) if args.object else []
     item_list = parse_npc_ids(args.item) if args.item else []
+    zone_list = parse_npc_ids(args.zone) if args.zone else []
 
-    if not npc_list and not object_list and not item_list:
-        print("[!] No valid target ids provided. Use --npc, --object or --item with comma-separated ids")
+    if not npc_list and not object_list and not item_list and not zone_list:
+        print("[!] No valid target ids provided. Use --npc, --object, --zone or --item with comma-separated ids")
 
         return
 
@@ -507,6 +602,19 @@ def main():
             )
         except Exception as e:
             print(f"[!] Unexpected error processing Item {itm}: {e}")
+            traceback.print_exc()
+    for zone in zone_list:
+        try:
+            process_zone(
+                zone,
+                args.outdir,
+                use_cache=use_cache,
+                exclude_ids=exclude_ids,
+                exclude_qualities=exclude_qualities,
+                exclude_professions=exclude_professions,
+            )
+        except Exception as e:
+            print(f"[!] Unexpected error processing Zone {zone}: {e}")
             traceback.print_exc()
 
 if __name__ == "__main__":

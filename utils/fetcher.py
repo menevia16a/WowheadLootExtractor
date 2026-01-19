@@ -9,9 +9,9 @@ import os
 from bs4 import BeautifulSoup
 from .config import (
     HTTP_HEADERS, MAX_RETRIES, RETRY_DELAY, REQUEST_TIMEOUT,
-    WOWHEAD_NPC_URL, WOWHEAD_OBJECT_URL, WOWHEAD_ITEM_URL
+    WOWHEAD_NPC_URL, WOWHEAD_OBJECT_URL, WOWHEAD_ITEM_URL, WOWHEAD_ZONE_URL
 )
-from .parser import parse_npc_loot_data, parse_item_page, parse_object_loot_data, parse_item_loot_data
+from .parser import parse_npc_loot_data, parse_item_page, parse_object_loot_data, parse_item_loot_data, parse_zone_loot_data
 from .utils import find_matching_bracket, extract_objects_from_array_str, clean_js_string
 
 
@@ -235,6 +235,28 @@ class ItemLootFetcher:
         return parse_item_loot_data(html, item_id)
 
 
+class ZoneLootFetcher:
+    """Fetches and parses 'fishing' loot data for zone pages."""
+
+    def __init__(self, http_fetcher=None):
+        self.http_fetcher = http_fetcher or RetryableHTTPFetcher()
+
+    def fetch_loot(self, zone_id):
+        """
+        Fetch contained loot for a given item ID from Wowhead.
+        """
+        url = WOWHEAD_ZONE_URL(zone_id)
+        print(f"[+] Fetching loot data for zone {zone_id} from {url}")
+
+        html = self.http_fetcher.fetch_url(url, description=f"Zone {zone_id} contains")
+
+        if html is None:
+            return []
+
+        # Parse the item page for contains/drops listview data
+        return parse_zone_loot_data(html, zone_id)
+
+
 class NpcNameFetcher:
     """Fetches human-friendly NPC names from Wowhead."""
 
@@ -337,3 +359,44 @@ class ObjectNameFetcher:
         name = name.rstrip(' -–—')
 
         return name or str(obj_id)
+
+class ZoneNameFetcher:
+    """Fetches human-friendly Zone names from Wowhead."""
+
+    def __init__(self, http_fetcher=None):
+        self.http_fetcher = http_fetcher or RetryableHTTPFetcher()
+
+    def fetch_object_name(self, zone_id):
+        url = f"{WOWHEAD_ZONE_URL(zone_id).split('#')[0]}"
+        html = self.http_fetcher.fetch_url(url, description=f"Zone page {zone_id}")
+
+        if html is None:
+            return str(zone_id)
+
+        try:
+            soup = BeautifulSoup(html, 'html.parser')
+        except Exception:
+            return str(zone_id)
+
+        og = soup.find('meta', {'property': 'og:title'})
+
+        if og and og.get('content'):
+            name = og.get('content')
+        else:
+            h1 = soup.find('h1')
+
+            if h1 and h1.get_text(strip=True):
+                name = h1.get_text(strip=True)
+            else:
+                t = soup.find('title')
+                name = t.string if (t and t.string) else str(zone_id)
+
+        name = str(name).strip()
+
+        for sep in ['—', ' - ', ' – ']:
+            if sep in name:
+                name = name.split(sep)[0].strip()
+
+        name = name.rstrip(' -–—')
+
+        return name or str(zone_id)
