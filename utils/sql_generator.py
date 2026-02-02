@@ -11,7 +11,7 @@ class SQLGenerator:
     """Generates SQL blocks from NPC loot data."""
 
     @staticmethod
-    def generate_loot_sql(npc_id, items, npc_name=None, reference=0, needsquest=0, lootmode=23, groupid=0, mincount=1, maxcount=1, shared=0):
+    def generate_loot_sql(npc_id, items, npc_name=None, reference=0, needsquest=0, lootmode=63, groupid=0, mincount=1, maxcount=1, shared=0):
         """
         Generate SQL REPLACE and conditions blocks for NPC loot.
         
@@ -19,7 +19,7 @@ class SQLGenerator:
             npc_id: Numeric NPC ID
             items: List of enriched item dicts
             npc_name: Human-readable NPC name (uses ID if None)
-            lootmode: Loot mode value for SQL (default 23 for Normal + RDF/LRF + heroic + mythic)
+            lootmode: Loot mode value for SQL (default 63 for all dungeon/raid types)
             groupid: Group ID for SQL (default 0)
             mincount: Min count value for SQL (default 1)
             maxcount: Max count value for SQL (default 1)
@@ -98,7 +98,7 @@ class SQLGenerator:
         return "\n".join(comment_lines + sql_lines)
 
     @staticmethod
-    def generate_gameobject_loot_sql(obj_id, items, obj_name=None, reference=0, needsquest=0, lootmode=23, groupid=0, mincount=1, maxcount=1):
+    def generate_gameobject_loot_sql(obj_id, items, obj_name=None, reference=0, needsquest=0, lootmode=63, groupid=0, mincount=1, maxcount=1):
         """
         Generate SQL for gameobject loot tables. Uses gameobject_loot_template 
         table and @GOB variable. Conditions use SourceType 4.
@@ -165,7 +165,7 @@ class SQLGenerator:
         return "\n".join(comment_lines + sql_lines)
 
     @staticmethod
-    def generate_item_loot_sql(item_id, items, item_name=None, reference=0, needsquest=0, lootmode=23, groupid=0, mincount=1, maxcount=1):
+    def generate_item_loot_sql(item_id, items, item_name=None, reference=0, needsquest=0, lootmode=63, groupid=0, mincount=1, maxcount=1):
         """
         Generate SQL for item/container loot tables. Uses @ITEM variable and
         writes to `item_loot_template`. Conditions use SourceType 5.
