@@ -65,13 +65,13 @@ class SQLGenerator:
 
             comment_lines.append(comment)
 
-            # Format chance for SQL
-            chance_sql = SQLGenerator._format_chance_for_sql(chance)
-			
-			# re-format from old style to newer TC for quest/chance
+            # re-format from old style to newer TC for quest/chance
             if chance < 0:
                 needsquest = 1
                 chance = chance * -1
+            
+            # Format chance for SQL
+            chance_sql = SQLGenerator._format_chance_for_sql(chance)
 
             # use per-item min/max if present (from parsed 'stack' values)
             minc, maxc = SQLGenerator._get_item_counts(it, mincount, maxcount)
@@ -136,13 +136,13 @@ class SQLGenerator:
 
             comment_lines.append(comment)
 
-            chance_sql = SQLGenerator._format_chance_for_sql(chance)
-            minc, maxc = SQLGenerator._get_item_counts(it, mincount, maxcount)
-            
             # re-format from old style to newer TC for quest/chance
             if chance < 0:
                 needsquest = 1
                 chance = chance * -1
+            
+            chance_sql = SQLGenerator._format_chance_for_sql(chance)
+            minc, maxc = SQLGenerator._get_item_counts(it, mincount, maxcount)
 
             vals.append(f"(@GOB,{iid},{reference},{chance_sql},{needsquest},{lootmode},{groupid},{minc},{maxc},\"{thisComment}\")")
 
@@ -203,13 +203,13 @@ class SQLGenerator:
 
             comment_lines.append(comment)
 
-            chance_sql = SQLGenerator._format_chance_for_sql(chance)
-            minc, maxc = SQLGenerator._get_item_counts(it, mincount, maxcount)
-            
             # re-format from old style to newer TC for quest/chance
             if chance < 0:
                 needsquest = 1
                 chance = chance * -1
+            
+            chance_sql = SQLGenerator._format_chance_for_sql(chance)
+            minc, maxc = SQLGenerator._get_item_counts(it, mincount, maxcount)
 
             vals.append(f"(@ITEM,{iid},{reference},{chance_sql},{needsquest},{lootmode},{groupid},{minc},{maxc},\"{thisComment}\")")
 
@@ -270,13 +270,13 @@ class SQLGenerator:
 
             comment_lines.append(comment)
 
-            chance_sql = SQLGenerator._format_chance_for_sql(chance)
-            minc, maxc = SQLGenerator._get_item_counts(it, mincount, maxcount)
-            
             # re-format from old style to newer TC for quest/chance
             if chance < 0:
                 needsquest = 1
                 chance = chance * -1
+            
+            chance_sql = SQLGenerator._format_chance_for_sql(chance)
+            minc, maxc = SQLGenerator._get_item_counts(it, mincount, maxcount)
 
             vals.append(f"(@ZONE,{iid},{reference},{chance_sql},{needsquest},{lootmode},{groupid},{minc},{maxc},\"{thisComment}\")")
 
