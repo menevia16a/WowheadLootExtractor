@@ -50,6 +50,7 @@ class SQLGenerator:
         for it in items:
             iid = it['id']
             chance = decide_drop_chance(it)
+            needsquest = 0
 
             if chance is None:
                 chance = 0.01
@@ -121,6 +122,7 @@ class SQLGenerator:
         for it in items:
             iid = it['id']
             chance = decide_drop_chance(it)
+            needsquest = 0
 
             if chance is None:
                 chance = 0.01
@@ -187,6 +189,7 @@ class SQLGenerator:
         for it in items:
             iid = it['id']
             chance = decide_drop_chance(it)
+            needsquest = 0
 
             if chance is None:
                 chance = 0.01
@@ -253,7 +256,8 @@ class SQLGenerator:
         for it in items:
             iid = it['id']
             chance = decide_drop_chance(it)
-
+            needsquest = 0
+            
             if chance is None:
                 chance = 0.01
 
