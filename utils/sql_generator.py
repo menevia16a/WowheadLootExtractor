@@ -52,8 +52,7 @@ class SQLGenerator:
             chance = decide_drop_chance(it)
 
             if chance is None:
-                skipped.append(iid)
-                continue
+                chance = 0.01
 
             # Build comment for this item
             comment_parts = SQLGenerator._build_item_comment_parts(it, chance)
@@ -124,8 +123,7 @@ class SQLGenerator:
             chance = decide_drop_chance(it)
 
             if chance is None:
-                skipped.append(iid)
-                continue
+                chance = 0.01
 
             comment_parts = SQLGenerator._build_item_comment_parts(it, chance)
             comment = f"{iid}"
@@ -191,8 +189,7 @@ class SQLGenerator:
             chance = decide_drop_chance(it)
 
             if chance is None:
-                skipped.append(iid)
-                continue
+                chance = 0.01
 
             comment_parts = SQLGenerator._build_item_comment_parts(it, chance)
             comment = f"{iid}"
@@ -258,8 +255,7 @@ class SQLGenerator:
             chance = decide_drop_chance(it)
 
             if chance is None:
-                skipped.append(iid)
-                continue
+                chance = 0.01
 
             comment_parts = SQLGenerator._build_item_comment_parts(it, chance)
             comment = f"{iid}"
