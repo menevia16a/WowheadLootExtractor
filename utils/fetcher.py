@@ -51,6 +51,7 @@ class RetryableHTTPFetcher:
         self.max_retries = max_retries
         self.retry_delay = retry_delay
         self.timeout = timeout
+        self.session = requests.Session()
 
     def fetch_url(self, url, headers=None, description="resource"):
         """
@@ -69,7 +70,7 @@ class RetryableHTTPFetcher:
 
         for attempt in range(self.max_retries):
             try:
-                resp = requests.get(url, headers=headers, timeout=self.timeout)
+                resp = self.session.get(url, headers=headers, timeout=self.timeout)
 
                 if resp.status_code == 200:
                     if attempt > 0:
